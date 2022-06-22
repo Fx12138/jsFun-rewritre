@@ -2,7 +2,7 @@
 一些js中函数的手撕
 
 - [bind](#bind)
-- [async/await](#async/await)
+- [async/await](#async\/await)
 
 ## bind
 
