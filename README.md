@@ -1,6 +1,9 @@
 # jsFun-rewritre
 一些js中函数的手撕
 
+- [bind](#bind)
+- [async/await](#async/await)
+
 ## bind
 
 ### 基本使用
