@@ -2,7 +2,7 @@
 一些js中函数的手撕
 
 - [bind](#bind)
-- [async/await](#async\/await)
+- [async/await](#async-await)
 
 ## bind
 
@@ -109,7 +109,7 @@ Function.prototype.bind2 = function(newThis){
 
 
 
-## async/await
+## async-await
 
 ### 基本使用
 
