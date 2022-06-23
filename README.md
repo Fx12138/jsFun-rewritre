@@ -40,6 +40,27 @@ Function.prototype.mycall = function (newThis, ...args) {
 }
 ```
 
+## apply
+
+apply和call的区别就apply传参时在第二个参数传入一个包含所有参数的数组
+
+### 实现
+
+```js
+Function.prototype.myapply = function (newThis, args) {
+  //第一步 处理newThis
+  newThis = newThis ? Object(newThis) : window;
+  //第二步 为newThis添加调用apply的方法
+  newThis.fn = this
+  //第三步 调用方法并返回结果
+  let res = newThis.fn(...args)
+  delete newThis.fn
+  return res
+}
+```
+
+
+
 ## bind
 
 ### 基本使用
