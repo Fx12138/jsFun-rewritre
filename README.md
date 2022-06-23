@@ -1,8 +1,44 @@
 # jsFun-rewritre
 一些js中函数的手撕
 
+- [call](#call)
+
 - [bind](#bind)
 - [async/await](#async-await)
+
+## call
+
+call主要用于改变函数执行时的this指向,参数依次从第二个参数开始传参即可
+
+### 基本使用
+
+```js
+var person = {
+  fullName: function(city, country) {
+    return this.firstName + " " + this.lastName + "," + city + "," + country;
+  }
+}
+var person1 = {
+  firstName:"Bill",
+  lastName: "Gates"
+}
+person.fullName.call(person1, "Seattle", "USA");// 将返回 "Steve Jobs,Seattle,USA"
+```
+
+### 实现call手撕
+
+```js
+Function.prototype.mycall = function (newThis, ...args) {
+  //第一步 对传进来的newThis进行处理,如果没传的话默认为window
+  newThis = newThis ? Object(newThis) : window;
+  //第二步 对newThis绑定调用call的函数
+  newThis.fn = this
+  //第三步 将调用函数得到的结果返回
+  let res = newThis.fn(...args)
+  delete newThis.fn
+  return res
+}
+```
 
 ## bind
 
