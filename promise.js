@@ -184,17 +184,37 @@ class myPromise {
       })
     })
   }
+
+  static race (promiseList) {
+    return new Promise((resolve, reject) => {
+      promiseList.forEach(promise => {
+        promise.then(value => {
+          resolve(value)
+        }, reason => {
+          reject(reason)
+        })
+      })
+    })
+  }
 }
 let p = new Promise((resolve, reject) => {
-  resolve(2412)
+  setTimeout(() => {
+    resolve(2412)
+  }, 5000);
+
 })
 let p1 = new Promise((resolve, reject) => {
-  resolve(312)
+  setTimeout(() => {
+    resolve(312)
+
+  }, 1000);
 })
 let p2 = new Promise((resolve, reject) => {
-  resolve(3123)
+  setTimeout(() => {
+    reject(3123)
+  }, 500);
 })
-let newp = myPromise.all([p, p1, p2]).then(value => {
+let newp = myPromise.race([p, p1, p2]).then(value => {
   console.log("成功" + value);
 }, reason => {
   console.log("失败" + reason)

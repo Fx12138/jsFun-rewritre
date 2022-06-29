@@ -894,3 +894,7 @@ all方法返回的也是一个promise,他接收一个promise数组,只有数组�
   }
 ```
 
+### Promise.race
+
+Promise.race主要功能是传入的promise数组中,谁的状态最先改变,则返回的promise就取先改变状态的那个promise的结果
+
