@@ -164,17 +164,38 @@ class myPromise {
       reject(reason)
     })
   }
+
+  static all (promiseList) {
+    //用来存放每个promise的value
+    let values = []
+    return new Promise((resolve, reject) => {
+      promiseList.forEach(promise => {
+        promise.then(value => {
+          //成功的话把value压入values中
+          values.push(value)
+          //如果values的长度和promiseList长度相等则全部处理完毕
+          if (values.length == promiseList.length) {
+            resolve(values)
+          }
+        }, reason => {
+          //如果任何一个promise调用失败的函数,则让返回的新的promise调用reject变成失败状态
+          reject(reason)
+        })
+      })
+    })
+  }
 }
 let p = new Promise((resolve, reject) => {
-  reject(2412)
+  resolve(2412)
 })
-Promise.resolve(p).then(value => {
-  console.log('成功啦' + value);
+let p1 = new Promise((resolve, reject) => {
+  resolve(312)
+})
+let p2 = new Promise((resolve, reject) => {
+  resolve(3123)
+})
+let newp = myPromise.all([p, p1, p2]).then(value => {
+  console.log("成功" + value);
 }, reason => {
-  console.log("失败啦" + reason);
+  console.log("失败" + reason)
 })
-// myPromise.reject(p).then(value => {
-//   console.log(value);
-// }, reason => {
-//   console.log('出错啦' + reason);
-// })

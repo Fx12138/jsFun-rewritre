@@ -870,3 +870,27 @@ reject永远返回失败结果
 
 ### Promise.all
 
+all方法返回的也是一个promise,他接收一个promise数组,只有数组中所有的promise均是成功状态的时候,返回的新的promise才是成功状态.如果数组中有任何一个是失败状态,则新返回的promise
+
+```js
+  static all (promiseList) {
+    //用来存放每个promise的value
+    let values = []
+    return new Promise((resolve, reject) => {
+      promiseList.forEach(promise => {
+        promise.then(value => {
+          //成功的话把value压入values中
+          values.push(value)
+          //如果values的长度和promiseList长度相等则全部处理完毕
+          if (values.length == promiseList.length) {
+            resolve(values)
+          }
+        }, reason => {
+          //如果任何一个promise调用失败的函数,则让返回的新的promise调用reject变成失败状态
+          reject(reason)
+        })
+      })
+    })
+  }
+```
+
