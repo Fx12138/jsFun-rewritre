@@ -322,3 +322,520 @@ asyncRes.then(res => console.log(res))  //8
 
 ```
 
+## Promise
+
+promise是js中很重要的一个知识点,也是经常使用的.这里就不介绍他的基本使用了,因为太复杂了,要介绍的话已经可以单独开一个章节介绍了下面直接开始手撕思路
+
+首先大家都知道promise有三种状态,在new一个promise的时候需要传入一个函数执行,并且一旦resolve或者reject改变了promise的状态后,就不能再次进行改变了,也就是说promise的状态一旦变成fufilled或rejected就不会再改变通过这些特性我们可以写出下面的代码
+
+```js
+class myPromise {
+  static PENDING = 'pending'
+  static FIFILLED = 'fufilled'
+  static REJECTED = 'rejected'
+  //传入的executor即new Promise时传入的(resolve,reject)=>{}
+  constructor(executor) {
+    //初始时默认状态为pending
+    this.status = myPromise.PENDING
+    this.value = null;
+
+    //如果执行过程中出现问题,则把错误交给reject处理
+    try {
+      //类中的方法局部默认开启了严格模式
+      //如果单独调用方法,其中的this为undefined,所以要通过bind绑定this
+      executor(this.resolve.bind(this), this.reject.bind(this));
+    } catch (error) {
+      this.reject(error)
+    }
+
+  }
+
+  resolve (value) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.FIFILLED
+      this.value = value
+    }
+  }
+
+  reject (reason) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.REJECTED
+      this.value = reason
+    }
+  }
+}
+
+let p = new myPromise((resolve, reject) => {
+  console.log(isdioa);
+  resolve("解决")
+})
+console.log(p);
+```
+
+### then
+
+下面根据then的基本用法可以写出一个雏形的then
+
+```js
+  then (onResolved, onRejected) {
+    //当没传onResolved或onRejected时也能执行,不报错
+    if (typeof onResolved != "function") {
+      onResolved = () => { }
+    }
+    if (typeof onRejected != "function") {
+      onRejected = () => { }
+    }
+    //根据promise的状态不同执行不同的回调
+    if (this.status == myPromise.FIFILLED) {
+      //放到异步队列里异步执行
+      setTimeout(() => {
+        //如果执行onResolved回调时出错也要交给onRejected
+        try {
+          onResolved(this.value)
+        } catch (error) {
+          onRejected(error)
+        }
+      });
+    }
+    if (this.status == myPromise.REJECTED) {
+      //放到异步队列里异步执行
+      setTimeout(() => {
+        //如果执行onRejected回调时出错也要交给onRejected
+        try {
+          onRejected(this.value)
+        } catch (error) {
+          onRejected(error)
+        }
+      });
+
+    }
+  }
+```
+
+现在有一个问题,就是then方法是直接调用的,但是如果newpromise时传入的函数里在异步操作中改变的status的状态,这时候会直接执行then,那么这时的status还是pending则不会执行,当异步中status更改了,then中的回调方法并不能知道状态改变而执行
+
+我们可以定义一个回调数组,如果then执行时status是pending状态,则将回调加入到数组中,并在resolve或reject中遍历回调数组从而执行,这时我们自己写的promise已经成了下面的样子,注意看第10 28 29 30 39 40 41 53 54 55行为上述新增操作
+
+```js
+class myPromise {
+  static PENDING = 'pending'
+  static FIFILLED = 'fufilled'
+  static REJECTED = 'rejected'
+  //传入的executor即new Promise时传入的(resolve,reject)=>{}
+  constructor(executor) {
+    //初始时默认状态为pending
+    this.status = myPromise.PENDING
+    this.value = null;
+    this.callbacks = []
+
+    //如果执行过程中出现问题,则把错误交给reject处理
+    try {
+      //类中的方法局部默认开启了严格模式
+      //如果单独调用方法,其中的this为undefined,所以要通过bind绑定this
+      executor(this.resolve.bind(this), this.reject.bind(this));
+    } catch (error) {
+      this.reject(error)
+    }
+
+  }
+
+  resolve (value) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.FIFILLED
+      this.value = value
+      //当promise中通过异步操作改变status状态则在这里执行回调函数
+      //需要异步执行
+      setTimeout(() => {
+        this.callbacks.forEach(callback => {
+          callback.onResolved(value)
+        })
+      });
+    }
+  }
+
+  reject (reason) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.REJECTED
+      this.value = reason
+      //当promise中通过异步操作改变status状态则在这里执行回调函数
+      //需要异步执行
+      setTimeout(() => {
+        this.callbacks.forEach(callback => {
+          callback.onRejected(reason)
+        })
+      });
+    }
+  }
+
+  then (onResolved, onRejected) {
+    //当没传onResolved或onRejected时也能执行,不报错
+    if (typeof onResolved != "function") {
+      onResolved = () => { }
+    }
+    if (typeof onRejected != "function") {
+      onRejected = () => { }
+    }
+    //如果status状态是pending的话,则把onResolved和onRejected函数压入callbacks
+    if (this.status == myPromise.PENDING) {
+      this.callbacks.push({ onResolved, onRejected })
+    }
+    //根据promise的状态不同执行不同的回调
+    if (this.status == myPromise.FIFILLED) {
+      //放到异步队列里异步执行
+      setTimeout(() => {
+        //如果执行onResolved回调时出错也要交给onRejected
+        try {
+          onResolved(this.value)
+        } catch (error) {
+          onRejected(error)
+        }
+      });
+    }
+    if (this.status == myPromise.REJECTED) {
+      //放到异步队列里异步执行
+      setTimeout(() => {
+        //如果执行onRejected回调时出错也要交给onRejected
+        try {
+          onRejected(this.value)
+        } catch (error) {
+          onRejected(error)
+        }
+      });
+    }
+  }
+}
+```
+
+这时的then还不能进行链式调用.所以then方法需要返回一个新的promise以实现链式调用.并且根据原生的promise,链式的then默认是成功的,then中return的值会成为链式then中的value,所以需要在执行onresolved和onrejected时获取结果,并resolve(获取的结果) 从而传给链式的then.同时在callback里压入的函数也要做相应的处理.此时还有一点是then中如果发生错误的话应该交由链式then的onrejected来处理.所以需要将不同状态处理中catch时进行reject(error) 因为这个reject时返回的新promise的reject.同时在callback里压入的函数也要做相应的处理.
+
+此时的promise如下.主要看65-71 81-87 93-100行
+
+```js
+class myPromise {
+  static PENDING = 'pending'
+  static FIFILLED = 'fufilled'
+  static REJECTED = 'rejected'
+  //传入的executor即new Promise时传入的(resolve,reject)=>{}
+  constructor(executor) {
+    //初始时默认状态为pending
+    this.status = myPromise.PENDING
+    this.value = null;
+    this.callbacks = []
+
+    //如果执行过程中出现问题,则把错误交给reject处理
+    try {
+      //类中的方法局部默认开启了严格模式
+      //如果单独调用方法,其中的this为undefined,所以要通过bind绑定this
+      executor(this.resolve.bind(this), this.reject.bind(this));
+    } catch (error) {
+      this.reject(error)
+    }
+
+  }
+
+  resolve (value) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.FIFILLED
+      this.value = value
+      //当promise中通过异步操作改变status状态则在这里执行回调函数
+      //需要异步执行
+      setTimeout(() => {
+        this.callbacks.forEach(callback => {
+          callback.onResolved(value)
+        })
+      });
+    }
+  }
+
+  reject (reason) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.REJECTED
+      this.value = reason
+      //当promise中通过异步操作改变status状态则在这里执行回调函数
+      //需要异步执行
+      setTimeout(() => {
+        this.callbacks.forEach(callback => {
+          callback.onRejected(reason)
+        })
+      });
+    }
+  }
+
+  then (onResolved, onRejected) {
+    //当没传onResolved或onRejected时也能执行,不报错
+    if (typeof onResolved != "function") {
+      onResolved = () => { }
+    }
+    if (typeof onRejected != "function") {
+      onRejected = () => { }
+    }
+
+    //返回一个新的promise以实现链式调用
+    return new myPromise((resolve, reject) => {
+      //如果status状态是pending的话,则把onResolved和onRejected函数压入callbacks
+      if (this.status == myPromise.PENDING) {
+        this.callbacks.push({
+          onResolved: value => {
+            let result = onResolved(value)
+            resolve(result)
+          }
+          , onRejected: value => {
+            let result = onRejected(value)
+            resolve(result)
+          }
+        })
+      }
+      //根据promise的状态不同执行不同的回调
+      if (this.status == myPromise.FIFILLED) {
+        //放到异步队列里异步执行
+        setTimeout(() => {
+          //如果执行onResolved回调时出错要交给下一个then的reject
+          try {
+            //获取本次then回调的结果
+            let result = onResolved(this.value)
+            //链式调用的then默认是成功的
+            resolve(result)
+          } catch (error) {
+            reject(error)
+          }
+        });
+      }
+      if (this.status == myPromise.REJECTED) {
+        //放到异步队列里异步执行
+        setTimeout(() => {
+          //如果执行onRejected回调时出错要交给下一个then的reject
+          try {
+            //获取本次then回调的结果
+            let result = onRejected(this.value)
+            resolve(result)
+          } catch (error) {
+            reject(error)
+          }
+        });
+      }
+    })
+  }
+}
+
+let p = new myPromise((resolve, reject) => {
+  setTimeout(() => {
+    reject(2)
+  }, 1000);
+}).then(value => {
+  console.log(value);
+  return "结果"
+}, reason => {
+  console.log(reason);
+  return "结果"
+}).then(value => {
+  console.log("success!" + value);
+}, reason => {
+  console.log("error!" + reason);
+})
+
+```
+
+原生的promise在then中可以返回一个新的promise并在下一个then中接收相应的结果,但是我们现在写的promise返回新的promise的话在下一个then中得到的只是一个promise,并不是resolve的结果.所以需要对返回的结果进行判断
+
+```js
+      //根据promise的状态不同执行不同的回调
+      if (this.status == myPromise.FIFILLED) {
+        //放到异步队列里异步执行
+        setTimeout(() => {
+          //如果执行onResolved回调时出错要交给下一个then的reject
+          try {
+            //获取本次then回调的结果
+            let result = onResolved(this.value)
+            if (result instanceof myPromise) {
+              //判断是否返回的是一个新的promise
+              result.then(value => {
+                resolve(value)
+              }, reason => {
+                reject(reason)
+              })
+            } else {
+              //如果是普通值 则直接交给下一个then处理
+              //链式调用的then默认是成功的
+              resolve(result)
+            }
+          } catch (error) {
+            reject(error)
+          }
+        });
+      }
+```
+
+在准备和拒绝里面做同样的判断操作.一个大致的promise就完成了,完整代码如下
+
+```js
+class myPromise {
+  static PENDING = 'pending'
+  static FIFILLED = 'fufilled'
+  static REJECTED = 'rejected'
+  //传入的executor即new Promise时传入的(resolve,reject)=>{}
+  constructor(executor) {
+    //初始时默认状态为pending
+    this.status = myPromise.PENDING
+    this.value = null;
+    this.callbacks = []
+
+    //如果执行过程中出现问题,则把错误交给reject处理
+    try {
+      //类中的方法局部默认开启了严格模式
+      //如果单独调用方法,其中的this为undefined,所以要通过bind绑定this
+      executor(this.resolve.bind(this), this.reject.bind(this));
+    } catch (error) {
+      this.reject(error)
+    }
+
+  }
+
+  resolve (value) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.FIFILLED
+      this.value = value
+      //当promise中通过异步操作改变status状态则在这里执行回调函数
+      //需要异步执行
+      setTimeout(() => {
+        this.callbacks.forEach(callback => {
+          callback.onResolved(value)
+        })
+      });
+    }
+  }
+
+  reject (reason) {
+    if (this.status == myPromise.PENDING) {
+      this.status = myPromise.REJECTED
+      this.value = reason
+      //当promise中通过异步操作改变status状态则在这里执行回调函数
+      //需要异步执行
+      setTimeout(() => {
+        this.callbacks.forEach(callback => {
+          callback.onRejected(reason)
+        })
+      });
+    }
+  }
+
+  then (onResolved, onRejected) {
+    //当没传onResolved或onRejected时也能执行,不报错
+    if (typeof onResolved != "function") {
+      onResolved = () => { this.value }
+    }
+    if (typeof onRejected != "function") {
+      onRejected = () => { this.value }
+    }
+
+    //返回一个新的promise以实现链式调用
+    return new myPromise((resolve, reject) => {
+      //如果status状态是pending的话,则把onResolved和onRejected函数压入callbacks
+      if (this.status == myPromise.PENDING) {
+        this.callbacks.push({
+          onResolved: value => {
+            try {
+              let result = onResolved(value)
+              if (result instanceof myPromise) {
+                //判断是否返回的是一个新的promise
+                result.then(value => {
+                  resolve(value)
+                }, reason => {
+                  reject(reason)
+                })
+              } else {
+                //如果是普通值 则直接交给下一个then处理
+                //链式调用的then默认是成功的
+                resolve(result)
+              }
+            } catch (error) {
+              reject(error)
+            }
+
+          }
+          , onRejected: value => {
+            try {
+              let result = onRejected(value)
+              resolve(result)
+            } catch (error) {
+              reject(error)
+            }
+
+          }
+        })
+      }
+      //根据promise的状态不同执行不同的回调
+      if (this.status == myPromise.FIFILLED) {
+        //放到异步队列里异步执行
+        setTimeout(() => {
+          //如果执行onResolved回调时出错要交给下一个then的reject
+          try {
+            //获取本次then回调的结果
+            let result = onResolved(this.value)
+            if (result instanceof myPromise) {
+              //判断是否返回的是一个新的promise
+              result.then(value => {
+                resolve(value)
+              }, reason => {
+                reject(reason)
+              })
+            } else {
+              //如果是普通值 则直接交给下一个then处理
+              //链式调用的then默认是成功的
+              resolve(result)
+            }
+          } catch (error) {
+            reject(error)
+          }
+        });
+      }
+      if (this.status == myPromise.REJECTED) {
+        //放到异步队列里异步执行
+        setTimeout(() => {
+          //如果执行onRejected回调时出错要交给下一个then的reject
+          try {
+            //获取本次then回调的结果
+            let result = onRejected(this.value)
+            if (result instanceof myPromise) {
+              //判断是否返回的是一个新的promise
+              result.then(value => {
+                resolve(value)
+              }, reason => {
+                reject(reason)
+              })
+            } else {
+              //如果是普通值 则直接交给下一个then处理
+              //链式调用的then默认是成功的
+              resolve(result)
+            }
+          } catch (error) {
+            reject(error)
+          }
+        });
+
+      }
+
+    })
+
+  }
+}
+
+
+
+let p2 = new myPromise((resolve, reject) => {
+  reject(2)
+})
+  .then(value => {
+    return new myPromise((resolve, reject) => {
+      reject('成功')
+    })
+  }, reason => {
+    return new myPromise((resolve, reject) => {
+      resolve('失败啦')
+    })
+  }).then(value => {
+    console.log(value);
+  }, reason => {
+    console.log('失败');
+  })
+```
+
