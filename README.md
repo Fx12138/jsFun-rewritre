@@ -839,3 +839,34 @@ let p2 = new myPromise((resolve, reject) => {
   })
 ```
 
+### Promise.resolve
+
+Promise.resolve也需要判断value值是普通值还是一个promise然后分别进行处理
+
+```js
+  static resolve (value) {
+    return new Promise((resolve, reject) => {
+      if (value instanceof Promise) {
+        //传入的value为一个promise
+        value.then(resolve, reject)
+      } else {
+        resolve(value)
+      }
+    })
+  }
+```
+
+### Promise.reject
+
+reject永远返回失败结果
+
+```js
+  static reject (reason) {
+    return new Promise((resolve, reject) => {
+      reject(reason)
+    })
+  }
+```
+
+### Promise.all
+

@@ -147,37 +147,34 @@ class myPromise {
     })
 
   }
+
+  static resolve (value) {
+    return new Promise((resolve, reject) => {
+      if (value instanceof Promise) {
+        //传入的value为一个promise
+        value.then(resolve, reject)
+      } else {
+        resolve(value)
+      }
+    })
+  }
+
+  static reject (reason) {
+    return new Promise((resolve, reject) => {
+      reject(reason)
+    })
+  }
 }
-
-// let p = new myPromise((resolve, reject) => {
-//   setTimeout(() => {
-//     resolve(2)
-//   }, 1000);
-// }).then(value => {
-//   console.log(dasdas);
-//   return "结果"
-// }, reason => {
-//   console.log(reason);
-//   return "结果"
-// }).then(value => {
-//   console.log("success!" + value);
-// }, reason => {
-//   console.log("error!" + reason);
-// })
-
-let p2 = new myPromise((resolve, reject) => {
-  reject(2)
+let p = new Promise((resolve, reject) => {
+  reject(2412)
 })
-  .then(value => {
-    return new myPromise((resolve, reject) => {
-      reject('成功')
-    })
-  }, reason => {
-    return new myPromise((resolve, reject) => {
-      resolve('失败啦')
-    })
-  }).then(value => {
-    console.log(value);
-  }, reason => {
-    console.log('失败');
-  })
+Promise.resolve(p).then(value => {
+  console.log('成功啦' + value);
+}, reason => {
+  console.log("失败啦" + reason);
+})
+// myPromise.reject(p).then(value => {
+//   console.log(value);
+// }, reason => {
+//   console.log('出错啦' + reason);
+// })
